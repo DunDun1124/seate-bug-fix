@@ -1,0 +1,90 @@
+server:
+  port: 0
+spring:
+  profiles:
+    active: local
+  application:
+    name: seata-bug-fix
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      # 配置中心相关配置
+      config:
+        # 是否启用配置中心，默认值 true 开启
+        enabled: true
+        # 设置配置的基本文件夹，默认值 config 可以理解为配置文件所在的最外层文件夹
+        # 设置应用的文件夹名称，默认值 application 一般建议设置为微服务集群名
+        default-context: huanglong
+        # 配置环境分隔符，默认值 "," 和 default-context 配置项搭配
+        # 例如应用 fruits-chain 分别有环境 default、dev、test、prod
+        # 只需在 config 文件夹下创建 fruits-chain、fruits-chain-dev、fruits-chain-test、fruits-chain-prod 文件夹即可
+        profile-separator: '-'
+        # 指定配置格式为 yaml
+        format: YAML
+        # Consul 的 Key/Values 中的 Key，Value 对应整个配置文件，通常为服务名
+        data-key: ${spring.application.name}
+        # 以上配置可以理解为：加载 config/fruits-chain/ 文件夹下 Key 为 portal-service 的 Value 对应的配置信息
+        watch:
+          # 是否开启自动刷新，默认值 true 开启
+          enabled: true
+          # 刷新频率，单位：毫秒，默认值 1000
+          delay: 1000
+        prefix: config
+      discovery:
+        prefer-ip-address: true                       # 是否使用 ip 地址注册
+        instance-id: ${spring.application.name}-${spring.cloud.client.ip-address}-${server.port}
+        tags:
+          - system:${spring.application.name}
+          - env:${spring.profiles.active}
+  datasource:
+    url: jdbc:postgresql://192.168.10.233:5432/stock?useUnicode=true&characterEncoding=utf-8&autoReconnect=true&rewriteBatchedStatements=true&TimeZone=Asia/Shanghai
+    username: stock
+    password: stock123456
+    driver-class-name: org.postgresql.Driver
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+mybatis-plus:
+  type-aliases-package: seata.fix.entity
+  mapper-locations: classpath:mapper/*.xml
+
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: my_test_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  use-jdk-proxy: false
+  registry:
+    type: consul
+    consul:
+      server-addr: 127.0.0.1:8500
+  transport:
+    shutdown:
+      wait: 3
+    thread-factory:
+      boss-thread-prefix: NettyBoss
+      worker-thread-prefix: NettyServerNIOWorker
+      server-executor-thread-prefix: NettyServerBizHandler
+      share-boss-worker: false
+      client-selector-thread-prefix: NettyClientSelector
+      client-selector-thread-size: 1
+      client-worker-thread-prefix: NettyClientWorkerThread
+      worker-thread-size: default
+      boss-thread-size: 1
+    type: TCP
+    server: NIO
+    heartbeat: true
+    serialization: seata
+    compressor: none
+    enable-client-batch-send-request: true
+  service:
+    vgroup-mapping:
+      my_test_tx_group: default
+    enable-degrade: false
+    disable-global-transaction: false
